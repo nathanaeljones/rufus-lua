@@ -74,25 +74,74 @@ module Lua
       f ? f.name : nil
     end
 
+    def self.lua52
+      @@lua52
+    end
+
     #
     # attach functions
+    @@lua52 = false
+    begin
+      attach_function :lua_call, [ :pointer, :int, :int ], :void
+    rescue FFI::NotFoundError
+      @@lua52 = true
+    end
 
+
+    if lua52
+      #LUA_API void  (lua_callk) (lua_State *L, int nargs, int nresults, int ctx,lua_CFunction k);
+      #define lua_call(L,n,r)   lua_callk(L, (n), (r), 0, NULL)
+      attach_function :lua_callk, [ :pointer, :int, :int, :int, :pointer], :void if lua52
+
+      #LUA_API int   (lua_pcallk) (lua_State *L, int nargs, int nresults, int errfunc, int ctx, lua_CFunction k);
+      #define lua_pcall(L,n,r,f)  lua_pcallk(L, (n), (r), (f), 0, NULL)
+      attach_function :lua_pcallk, [ :pointer, :int, :int, :int, :int, :pointer ], :int if lua52
+      
+      #define lua_tonumber(L,i) lua_tonumberx(L,i,NULL)
+      #LUA_API lua_Number      (lua_tonumberx) (lua_State *L, int idx, int *isnum);
+      #LUA_API lua_Integer     (lua_tointegerx) (lua_State *L, int idx, int *isnum);
+      #LUA_API lua_Unsigned    (lua_tounsignedx) (lua_State *L, int idx, int *isnum);
+      attach_function :lua_tonumberx, [ :pointer, :int, :pointer], :double
+
+      #It was just renamed..
+      attach_function :lua_objlen, :lua_rawlen, [ :pointer, :int ], :int
+
+      #define luaL_loadbuffer(L,s,sz,n) luaL_loadbufferx(L,s,sz,n,NULL)
+      #LUALIB_API int (luaL_loadbufferx) (lua_State *L, const char *buff, size_t sz, const char *name, const char *mode);
+
+      attach_function :luaL_loadbufferx, [ :pointer, :string, :int, :string, :string ], :int
+    
+    else
+
+      attach_function :lua_pcall, [ :pointer, :int, :int, :int ], :int if !lua52
+      #attach_function :lua_resume, [ :pointer, :int ], :int
+
+      attach_function :lua_tonumber, [ :pointer, :int ], :double
+
+      attach_function :lua_objlen, [ :pointer, :int ], :int
+    
+      attach_function :luaL_loadbuffer, [ :pointer, :string, :int, :string ], :int
+    
+    end
+
+
+
+    
     attach_function :strlen, [ :string ], :int
 
     attach_function :lua_close, [ :pointer ], :void
 
     attach_function :luaL_openlibs, [ :pointer ], :void
 
-    attach_function :lua_call, [ :pointer, :int, :int ], :void
+
+
     %w[ base package string table math io os debug ].each do |libname|
       attach_function "luaopen_#{libname}", [ :pointer ], :void
     end
 
-    attach_function :lua_pcall, [ :pointer, :int, :int, :int ], :int
-    #attach_function :lua_resume, [ :pointer, :int ], :int
+    
 
     attach_function :lua_toboolean, [ :pointer, :int ], :int
-    attach_function :lua_tonumber, [ :pointer, :int ], :double
     attach_function :lua_tolstring, [ :pointer, :int, :pointer ], :pointer
 
     attach_function :lua_type, [ :pointer, :int ], :int
@@ -101,7 +150,6 @@ module Lua
     attach_function :lua_gettop, [ :pointer ], :int
     attach_function :lua_settop, [ :pointer, :int ], :void
 
-    attach_function :lua_objlen, [ :pointer, :int ], :int
     attach_function :lua_getfield, [ :pointer, :int, :string ], :pointer
     attach_function :lua_gettable, [ :pointer, :int ], :void
 
@@ -121,7 +169,6 @@ module Lua
     attach_function :lua_rawgeti, [ :pointer, :int, :int ], :void
 
     attach_function :luaL_newstate, [], :pointer
-    attach_function :luaL_loadbuffer, [ :pointer, :string, :int, :string ], :int
     attach_function :luaL_ref, [ :pointer, :int ], :int
     attach_function :luaL_unref, [ :pointer, :int, :int ], :void
 

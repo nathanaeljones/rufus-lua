@@ -1,4 +1,6 @@
+#ENV['LUA_LIB'] = "/Users/nathanael/Documents/weaver-projects/eris/src/liblua.dylib"
 
+# export LUA_LIB=/Users/nathanael/Documents/weaver-projects/eris/src/liblua.dylib
 #
 # specifying rufus-lua
 #

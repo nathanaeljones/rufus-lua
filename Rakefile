@@ -4,6 +4,7 @@ $:.unshift('.') # 1.9.2
 require 'rake'
 require 'rake/clean'
 require 'rspec/core/rake_task'
+ENV['LUA_LIB'] = "/Users/nathanael/Documents/weaver-projects/eris/src/liblua.dylib"
 
 
 #

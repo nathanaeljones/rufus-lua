@@ -35,9 +35,15 @@ module Rufus::Lua
   #
   module StateMixin
 
+
+    def self.first_psuedo_idx
+      -1000 - FFI::Platform::ADDRESS_SIZE >= 32 ? 1000000 : 15000
+    end
+
+    LUA_RIDX_GLOBALS = 2
     LUA_GLOBALSINDEX = -10002
-    LUA_ENVIRONINDEX = -10001
-    LUA_REGISTRYINDEX = -10000
+    # not 5.2 compatible - LUA_ENVIRONINDEX = -10001
+    LUA_REGISTRYINDEX = Lib.lua52 ? StateMixin.first_psuedo_idx : -10000
     LUA_NOREF = -2
     LUA_REFNIL = -1
 
@@ -50,6 +56,10 @@ module Rufus::Lua
     LUA_GCSTEP = 5
     LUA_GCSETPAUSE = 6
     LUA_GCSETSTEPMUL = 7
+    LUA_GCSETMAJORINC = 8 
+    LUA_GCISRUNNING  = 9
+    LUA_GCGEN  = 10
+    LUA_GCINC  = 11
 
     TNONE = -1
     TNIL = 0
@@ -61,6 +71,9 @@ module Rufus::Lua
     TFUNCTION = 6
     TUSERDATA = 7
     TTHREAD = 8
+
+
+
 
     SIMPLE_TYPES = [ TNIL, TBOOLEAN, TNUMBER, TSTRING ]
 
@@ -90,7 +103,11 @@ module Rufus::Lua
 
       bottom = stack_top
 
-      err = Lib.luaL_loadbuffer(@pointer, s, Lib.strlen(s), 'line')
+      if Lib.lua52
+        err = Lib.luaL_loadbufferx(@pointer, s, Lib.strlen(s), 'line', "t") #only allow text loading, not bytecode
+      else
+        err = Lib.luaL_loadbuffer(@pointer, s, Lib.strlen(s), 'line')
+      end
       fail_if_error('eval:compile', err, binding, filename, lineno)
 
       pcall(bottom, 0, binding, filename, lineno) # arg_count is set to 0
@@ -288,14 +305,20 @@ module Rufus::Lua
         Lib.lua_settable(@pointer, -3)
       end
     end
-
+=begin
     # Loads a Lua global value on top of the stack
     #
     def stack_load_global(name)
+      if Lib.lua52
+        stack_load_ref(LUA_RIDX_GLOBALS)
 
-      Lib.lua_getfield(@pointer, LUA_GLOBALSINDEX, name)
+        stack_pop
+        ## -todo, not done
+      else
+        Lib.lua_getfield(@pointer, LUA_GLOBALSINDEX, name)
+      end
     end
-
+=end
     # Loads the Lua object registered with the given ref on top of the stack
     #
     def stack_load_ref(ref)
@@ -326,8 +349,11 @@ module Rufus::Lua
       #err = Lib.lua_pcall(@pointer, 0, 1, 0)
         # when there's only 1 return value, use LUA_MULTRET (-1) the
         # rest of the time
-
-      err = Lib.lua_pcall(@pointer, arg_count, LUA_MULTRET, 0)
+      if Lib.lua52
+        err = Lib.lua_pcallk(@pointer, arg_count, LUA_MULTRET, 0, 0, FFI::Pointer.new(0))
+      else
+        err = Lib.lua_pcall(@pointer, arg_count, LUA_MULTRET, 0)
+      end
       fail_if_error('eval:pcall', err, binding, filename, lineno)
 
       return_result(stack_bottom)
