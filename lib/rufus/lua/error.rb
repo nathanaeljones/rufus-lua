@@ -35,7 +35,7 @@ module Rufus::Lua
   class LuaError < RuntimeError
 
     attr_reader :kind, :errcode, :msg
-    attr_reader :binding, :filename, :lineno
+    attr_reader :lua_binding, :filename, :lineno
 
     attr_reader :original_backtrace
 
@@ -47,7 +47,7 @@ module Rufus::Lua
       @errcode = errcode
       @msg = msg
 
-      @binding = binding
+      @lua_binding = binding
       @filename = filename
       @lineno = lineno
     end
